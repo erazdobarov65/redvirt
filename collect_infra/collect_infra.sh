@@ -5,7 +5,7 @@
 # Скрипт запускается из управляющей ВМ HostedEngine.
 # Разработчик: Раздобаров Евгений
 
-OUTPUT_FILE="vm_infra.info"
+OUTPUT_FILE="virt_infra.info"
 
 # Функция сбора данных с локальной ВМ Engine
 collect_local_vm_data() {
