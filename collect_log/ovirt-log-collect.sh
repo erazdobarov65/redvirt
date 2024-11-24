@@ -68,7 +68,7 @@ download_logs() {
         # Проверить наличие директории на хосте
         CHK="$( ${SSH} ${USER}@${host} [ -d /var/log ] >/dev/null 2>&1; echo $? )"
         if [ ${CHK} == "0" ]; then
-                mkdir log
+                #mkdir log
                 # Загрузить логи с хоста
                 ${SCPD} ${USER}@${host}:/var/log/* log/
         fi
@@ -100,7 +100,7 @@ read -p "Для полного сбора логов из каталога /var/
             mkdir hosted-engine
             cd hosted-engine
             # Собрать полные логи /var/log с ВМ ovirt-engine
-            [ -d /var/log ] && cp /var/log/ .
+            [ -d /var/log ] && cp -r /var/log/ .
             [ -d log ] && echo "Собраны полностью локальные логи Engine из каталога /var/log"
         #   [ -d hosted-engine ] && echo "Собраны локальные логи Engine"
             # Перейти в родительскую директорию
