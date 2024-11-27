@@ -266,6 +266,7 @@ def RenameDisks(connection,NEW_VM_NAME):
                         ),
                     ),
                 )
+                print(f"Диск переименован: {NEW_VM_NAME}_{disk_id}")
                 disk_id += 1
 
 # функция проверки префиксов существующих ВМ
@@ -431,6 +432,17 @@ def main():
                 else:
                     break
 
+            while True:
+                RENAME_VM_DISKS = input(f"Для переименования дисков ВМ в соответствии с уазанным префиксом, введите 'y' или 'n' - оставить имя дисков из шаблона > ")
+                if RENAME_VM_DISKS == 'y':
+                    print(f"Диски ВМ будут переименованы в соответствии с указанным префиксом: {PREFIX_VM_NAME}")
+                    break
+                elif RENAME_VM_DISKS == 'n':
+                    print(f"Диски ВМ сохранят имена из шаблона")
+                    break
+                else:
+                    print(f"Введите 'y' или 'n'")
+
             for i in range(1, VM_NUM):
                 VM_NAME = PREFIX_VM_NAME+'-'+str(i)
                 #print(NEW_VM_NAME)
@@ -452,6 +464,9 @@ def main():
 
                 #Проверяем создались ли диски ВМ
                 CheckVMdisk(connection,VM_NAME)
+                if RENAME_VM_DISKS == 'y':
+                    # Переименовываем диски
+                    RenameDisks(connection, VM_NAME)
 
             start_action = input(f"Включить созданные ВМ? ('y' - включить, 'n' - оставить выключенными или любую клавишу для выхода) > ")
             if start_action == 'y':
