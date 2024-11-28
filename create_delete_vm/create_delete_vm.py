@@ -1,4 +1,4 @@
-# Скрипт для массового добавления Виртуальных машин в выбранный кластер
+# Скрипт для массового создания и удаления виртуальных машин в среде Ред Виртуализация (oVirt 4.4)
 # Запускается из командной строки без аргументов.
 # Работает в интерактивном режиме
 # !!!Внимание!!!
@@ -6,8 +6,7 @@
 # OVIRT_USER -  пользователь ovirt с админскими правами (на создание ВМ)
 # OVIRT_PASS - пароль пользователя
 # OVIRT_URL -  адрес API ovirt-engine в виде "https://<hosted-engine>/ovirt-engine/api" где <hosted-engine> - FQDN менеджера виртуализации
-# MEMORY_VM - Объем памяти ВМ в виде "<ГБ> * 1024 *1024 *1024". Геде ГБ - объем в ГБ
-# VCPU_VM - Количество виртуальных CPU
+
 
 
 #import logging
@@ -126,7 +125,7 @@ def CreateVM_thick(connection,NEW_VM_NAME,MEMORY_VM,CLUSTER_ID,TMPL_ID,VCPU_VM, 
             template=types.Template(id=TMPL_ID),
             memory_policy=types.MemoryPolicy(
                 guaranteed=MEMORY_VM,
-                max=MEMORY_VM,
+                max=MEMORY_VM * 4,
             ),
             cpu=types.Cpu(
                 topology=types.CpuTopology(
@@ -141,10 +140,10 @@ def CreateVM_thick(connection,NEW_VM_NAME,MEMORY_VM,CLUSTER_ID,TMPL_ID,VCPU_VM, 
                 )
             )
         ),
-        clone=True #диски тонкие.
+        clone=True #диски толстые.
     )
 
-# Функция создания новой ВМ с толстыми дисками и в произвольно выбранном домене
+# Функция создания новой ВМ с тонкими дисками в сторадж домене, где находятся диски шаблона
 def CreateVM_thin(connection,NEW_VM_NAME,MEMORY_VM,CLUSTER_ID,TMPL_ID,VCPU_VM):
     vms_service = connection.system_service().vms_service()
     vms = vms_service.list()
@@ -157,7 +156,7 @@ def CreateVM_thin(connection,NEW_VM_NAME,MEMORY_VM,CLUSTER_ID,TMPL_ID,VCPU_VM):
             template=types.Template(id=TMPL_ID),
             memory_policy=types.MemoryPolicy(
                 guaranteed=MEMORY_VM,
-                max=MEMORY_VM,
+                max=MEMORY_VM * 4,
             ),
             cpu=types.Cpu(
                 topology=types.CpuTopology(
@@ -172,7 +171,7 @@ def CreateVM_thin(connection,NEW_VM_NAME,MEMORY_VM,CLUSTER_ID,TMPL_ID,VCPU_VM):
                 )
             )
         ),
-        clone=False #диски толстые.
+        clone=False #диски тонкие.
     )
 
 # Функция для проверки создалась ли ВМ
@@ -207,7 +206,8 @@ def CheckVMdisk(connection,VM_NAME):
                 disks_service = connection.system_service().disks_service()
                 disk_service = disks_service.disk_service(disk_attachment.disk.id)
                 while True:
-                    time.sleep(1)
+                    print(f"Диски ВМ {VM_NAME} создаются")
+                    time.sleep(5)
                     disk = disk_service.get()
                     if disk.status == types.DiskStatus.OK:
                         print(f"Диски ВМ {VM_NAME} созданы")
@@ -402,8 +402,8 @@ def delete_vm(connection, VM_ID_ARR):
 def main():
 
     # Задаем параметры памяти и ЦПУ ВМ
-    MEMORY_VM = 1 * 1024 *1024 *1024
-    VCPU_VM = 1
+    #MEMORY_VM = 1 * 1024 *1024 *1024
+    #VCPU_VM = 1
 
     connection = ovirt_connect(OVIRT_URL)
     
@@ -414,6 +414,25 @@ def main():
             CLUSTER_ID = SelectCluster(connection)
             TMPL_ID = SelectTemplate(connection, CLUSTER_ID)
             SD_ID = SelectDomain(connection)
+
+            while True:
+                VCPU_VM = input(f"Введите требуемое количество CPU > ")
+                try:
+                    VCPU_VM = int(VCPU_VM)
+                except ValueError:
+                    print(f"Введите требуемое количество CPU еще раз")
+                else:
+                    break
+
+            while True:
+                MEMORY_VM = input(f"Введите требуемый объем памяти в ГБ > ")
+                try:
+                    MEMORY_VM = int(MEMORY_VM) *1024 *1024 *1024
+                except ValueError:
+                    print(f"Введите требуемый объем памяти еще раз")
+                else:
+                    break
+
             while True:
                 VM_NUM = input(f"Введите требуемое количество ВМ > ")
                 try:
@@ -485,10 +504,7 @@ def main():
         else:
             break
    
-
-
     connection.close()
-
 
 if __name__ == '__main__':
     main()
