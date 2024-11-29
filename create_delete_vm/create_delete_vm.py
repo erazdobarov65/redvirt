@@ -21,8 +21,8 @@ import re
 
 # Задаем параметры подключения
 
-OVIRT_USER = "evgeny@internal" #admin
-OVIRT_PASS = "@ASDqwe123"
+OVIRT_USER = "admin@internal" #admin
+OVIRT_PASS = ""
 OVIRT_URL = "https://engine.redvirt.tst/ovirt-engine/api"
 
 
