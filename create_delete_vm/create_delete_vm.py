@@ -21,8 +21,8 @@ import re
 
 # Задаем параметры подключения
 
-OVIRT_USER = "admin@internal" #admin
-OVIRT_PASS = ""
+OVIRT_USER = "evgeny@internal" #admin
+OVIRT_PASS = "@ASDqwe123"
 OVIRT_URL = "https://engine.redvirt.tst/ovirt-engine/api"
 
 
@@ -289,21 +289,32 @@ def select_vm(connection, vm_match):
     vms = vms_service.list()
 
     vm_arr = []
+    vm_arr_name = []
     vm_num = 0
+    vm_num_selected =0
     VM_ID_ARR = []
+    VM_NAME_ARR = []
     while True:
         for vm in vms:
             if vm_match == '*':
                 vm_num += 1
                 vm_arr.append(vm.id)
+                vm_arr_name.append(vm.name)
                 print(f"{vm_num}: {vm.name}, status: {vm.status}")
                 #print(vm_num + ' :' +  Fore.RED + vm.name + Style.RESET_ALL + ' , status:' + vm.status)
             elif re.search(vm_match.lower(), vm.name.lower()):
                 vm_num += 1
                 vm_arr.append(vm.id)
+                vm_arr_name.append(vm.name)
                 print(f"{vm_num}: {vm.name}, status: {vm.status}")
+        if len(vm_arr) == 0:
+            return vm_arr
         vm_indexes = input(f"Введите номера ВМ (через пробел) или '*' для выбора всех ВМ > ")
         if vm_indexes == '*':
+            print(f"Выбраны ВМ:")
+            for vm_name in vm_arr_name:
+                vm_num_selected += 1
+                print(f"{vm_num_selected}: {vm_name}")
             return vm_arr
         elif vm_indexes == '0':
             print(f"Введен неправильный номер ВМ, повторите снова")
@@ -311,10 +322,15 @@ def select_vm(connection, vm_match):
             pass
         else:
             vm_index_list = vm_indexes.split(' ')
-            print(vm_index_list)
+            #print(vm_index_list)
             try:
                 for vm_index in vm_index_list:
                     VM_ID_ARR.append(vm_arr[int(vm_index) - 1])
+                    VM_NAME_ARR.append(vm_arr_name[int(vm_index) - 1])
+                print(f"Выбраны ВМ:")
+                for vm_name in VM_NAME_ARR:
+                    vm_num_selected += 1
+                    print(f"{vm_num_selected}: {vm_name}")
                 return VM_ID_ARR
                 break
             except ValueError:
@@ -497,14 +513,20 @@ def main():
             else:
                 exit()
         elif VM_ACTION == 'd':
-            vm_match = input(f"Введите честь названия ВМ (или '*' для вывода всех ВМ) > ")
-            #print(type(vm_match))
-            VM_ID_ARR = select_vm(connection, vm_match)
-            delete_vm(connection, VM_ID_ARR)
+            while True:
+                vm_match = input(f"Введите часть названия ВМ (или '*' для вывода всех ВМ) > ")
+                #print(type(vm_match))
+                VM_ID_ARR = select_vm(connection, vm_match)
+                if len(VM_ID_ARR) == 0:
+                    print(f"Не найдено ВМ, соответствующих указанным критериям. Попробуйте еще раз")
+                else:
+                    delete_vm(connection, VM_ID_ARR)
+                    break
         else:
             break
    
     connection.close()
 
 if __name__ == '__main__':
+
     main()
