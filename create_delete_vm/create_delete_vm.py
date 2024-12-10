@@ -270,15 +270,17 @@ def RenameDisks(connection,NEW_VM_NAME):
                 disk_id += 1
 
 # функция проверки префиксов существующих ВМ
-def check_prefix(connection, VM_NAME):
+def CheckPrefix(connection, VM_NAME):
     system_service = connection.system_service()
     vms_service = system_service.vms_service()
+    vm_name_arr = []
     
     vms = vms_service.list()
     for vm in vms:
         if re.search(VM_NAME.lower(), vm.name.lower()):
+            vm_name_arr.append(vm.name)
             #print(f"ВМ {vm.name} уже существует")
-            return True
+    return vm_name_arr
 
 # Функция поиска ВМ на основе префика, введенного пользователем - vm_match
 def select_vm(connection, vm_match):
@@ -462,9 +464,64 @@ def main():
                 PREFIX_VM_NAME = input(f"Введите префикс названия ВМ > ")
                 if bool(re.search(r"\s", PREFIX_VM_NAME)):
                     print(f"Введите ещё раз префикс названия ВМ без пробелов")
-                elif check_prefix(connection, PREFIX_VM_NAME):
-                    print(f"Префикс {PREFIX_VM_NAME} уже существует, укажите другой")
                 else:
+                    VM_NAME_ARR = CheckPrefix(connection,PREFIX_VM_NAME)
+                    print(VM_NAME_ARR)
+                    try:
+                        VM_NUM_ARR = []
+                        for VM_NAME in VM_NAME_ARR:
+                            m = re.search('-(\d+)$', VM_NAME)
+                            VM_NUMBER = m.group(1)
+                            VM_NUM_ARR.append(VM_NUMBER)
+                        VM_NUM_MAX = int(max(VM_NUM_ARR))
+                        VM_NUM_FOR = VM_NUM + int(VM_NUM_MAX)
+                        VM_CURRENT_NUM = int(VM_NUM_MAX) + 1
+
+                        VM_NUM_MAX_1 = int(max(VM_NUM_ARR))
+                        VM_NUM_FOR_1 = VM_NUM + int(VM_NUM_MAX_1)
+                        VM_CURRENT_NUM_1 = int(VM_NUM_MAX_1) + 1
+
+                        VM_NUM_MAX_2 = int(max(VM_NUM_ARR))
+                        VM_NUM_FOR_2 = VM_NUM + int(VM_NUM_MAX_2) 
+                        VM_CURRENT_NUM_2 = int(VM_NUM_MAX_2) + 1
+
+                        VM_NUM_MAX_3 = int(max(VM_NUM_ARR))
+                        VM_NUM_FOR_3 = VM_NUM + int(VM_NUM_MAX_3)
+                        VM_CURRENT_NUM_3 = int(VM_NUM_MAX_3) + 1
+
+                    except AttributeError:
+                        VM_NUM_MAX = 0
+                        VM_NUM_FOR = VM_NUM + VM_NUM_MAX
+                        VM_CURRENT_NUM = 1
+
+                        VM_NUM_MAX_1 = 0
+                        VM_NUM_FOR_1 = VM_NUM + VM_NUM_MAX_1
+                        VM_CURRENT_NUM_1 = 1
+
+                        VM_NUM_MAX_2 = 0
+                        VM_NUM_FOR_2 = VM_NUM + VM_NUM_MAX_2
+                        VM_CURRENT_NUM_2 = 1
+
+                        VM_NUM_MAX_3 = 0
+                        VM_NUM_FOR_3 = VM_NUM + VM_NUM_MAX_3
+                        VM_CURRENT_NUM_3 = 1
+
+                    except ValueError:
+                        VM_NUM_MAX = 0
+                        VM_NUM_FOR = VM_NUM + VM_NUM_MAX
+                        VM_CURRENT_NUM = 1
+
+                        VM_NUM_MAX_1 = 0
+                        VM_NUM_FOR_1 = VM_NUM + VM_NUM_MAX_1
+                        VM_CURRENT_NUM_1 = 1
+
+                        VM_NUM_MAX_2 = 0
+                        VM_NUM_FOR_2 = VM_NUM + VM_NUM_MAX_2
+                        VM_CURRENT_NUM_2 = 1
+
+                        VM_NUM_MAX_3 = 0
+                        VM_NUM_FOR_3 = VM_NUM + VM_NUM_MAX_3
+                        VM_CURRENT_NUM_3 = 1
                     break
 
             while True:
@@ -478,36 +535,42 @@ def main():
                 else:
                     print(f"Введите 'y' или 'n'")
 
-            for i in range(1, VM_NUM):
-                VM_NAME = PREFIX_VM_NAME+'-'+str(i)
+            for i in range(int(VM_NUM_MAX) + 1, VM_NUM_FOR):
+                VM_NAME = PREFIX_VM_NAME + '-' + str(VM_CURRENT_NUM)
+                #VM_NAME = PREFIX_VM_NAME+'-'+str(i)
                 #print(NEW_VM_NAME)
 
                 # Создаем новую ВМ
                 if SD_ID != 0: # Если домен хранения выбран произвольный, то с толсыми дисками
                     CreateVM_thick(connection,VM_NAME,MEMORY_VM,CLUSTER_ID,TMPL_ID,VCPU_VM, SD_ID)
+                    VM_CURRENT_NUM += 1
                 else: # В противном случае (если выбран 0)с тонкими дисками
                     CreateVM_thin(connection,VM_NAME,MEMORY_VM,CLUSTER_ID,TMPL_ID,VCPU_VM)
-
-            for i in range(1, VM_NUM):
-                VM_NAME = PREFIX_VM_NAME+'-'+str(i)
+                    VM_CURRENT_NUM += 1
+            
+            for i in range(int(VM_NUM_MAX_1) + 1, VM_NUM_FOR_1):
+                VM_NAME = PREFIX_VM_NAME + '-' + str(VM_CURRENT_NUM_1)
 
                 #Проверяем создалась ли ВМ
                 CheckVMAvailable(connection,VM_NAME)
+                VM_CURRENT_NUM_1 += 1
 
-            for i in range(1, VM_NUM):
-                VM_NAME = PREFIX_VM_NAME+'-'+str(i)
+            for i in range(int(VM_NUM_MAX_2) + 1, VM_NUM_FOR_2):
+                VM_NAME = PREFIX_VM_NAME + '-' + str(VM_CURRENT_NUM_2)
 
                 #Проверяем создались ли диски ВМ
                 CheckVMdisk(connection,VM_NAME)
                 if RENAME_VM_DISKS == 'y':
                     # Переименовываем диски
                     RenameDisks(connection, VM_NAME)
+                VM_CURRENT_NUM_2 += 1
 
             start_action = input(f"Включить созданные ВМ? ('y' - включить, 'n' - оставить выключенными или любую клавишу для выхода) > ")
             if start_action == 'y':
-                for i in range(1, VM_NUM):
-                    VM_NAME = PREFIX_VM_NAME+'-'+str(i)
+                for i in range(int(VM_NUM_MAX_3) + 1, VM_NUM_FOR_3):
+                    VM_NAME = PREFIX_VM_NAME + '-' + str(VM_CURRENT_NUM_3)
                     StartVM(connection,VM_NAME)
+                    VM_CURRENT_NUM_3 += 1
             elif start_action == 'n':
                 print(f"Созданные ВМ не будут запущены")
             else:
