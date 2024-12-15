@@ -5,8 +5,8 @@
 
 ### collect_infra  
 
-Сбор данных о версиях пакетов ПО виртуализации на управляющей ВМ Engine VM и гипервизорах, включая их аппаратную конфигурацию.  
-Retrive data about software virtualization packets versions from oVirt Engine and hypervisors, including their hardware configuration.  
+Сбор данных о версиях пакетов ПО виртуализации на управляющей ВМ Engine и гипервизорах, включая их аппаратную конфигурацию.  
+Retrive data about software virtualization packets versions from oVirt Engine VM and hypervisors, including their hardware configuration.  
 
 ### collect_log  
 
