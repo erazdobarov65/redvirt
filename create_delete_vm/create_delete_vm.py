@@ -283,7 +283,7 @@ def CheckPrefix(connection, VM_NAME):
     return vm_name_arr
 
 # Функция поиска ВМ на основе префика, введенного пользователем - vm_match
-def select_vm(connection, vm_match):
+def SelectVM(connection, vm_match):
 
     system_service = connection.system_service()
     vms_service = system_service.vms_service()
@@ -390,7 +390,7 @@ def SelectDomain(connection):
 
 
 # Функция удаления выбранных ВМ
-def delete_vm(connection, VM_ID_ARR):
+def DeleteVM(connection, VM_ID_ARR):
     system_service = connection.system_service()
     vms_service = system_service.vms_service()
     
@@ -537,8 +537,6 @@ def main():
 
             for i in range(int(VM_NUM_MAX) + 1, VM_NUM_FOR):
                 VM_NAME = PREFIX_VM_NAME + '-' + str(VM_CURRENT_NUM)
-                #VM_NAME = PREFIX_VM_NAME+'-'+str(i)
-                #print(NEW_VM_NAME)
 
                 # Создаем новую ВМ
                 if SD_ID != 0: # Если домен хранения выбран произвольный, то с толсыми дисками
@@ -579,11 +577,11 @@ def main():
             while True:
                 vm_match = input(f"Введите часть названия ВМ (или '*' для вывода всех ВМ) > ")
                 #print(type(vm_match))
-                VM_ID_ARR = select_vm(connection, vm_match)
+                VM_ID_ARR = SelectVM(connection, vm_match)
                 if len(VM_ID_ARR) == 0:
                     print(f"Не найдено ВМ, соответствующих указанным критериям. Попробуйте еще раз")
                 else:
-                    delete_vm(connection, VM_ID_ARR)
+                    DeleteVM(connection, VM_ID_ARR)
                     break
         else:
             break

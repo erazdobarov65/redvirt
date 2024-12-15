@@ -47,7 +47,7 @@ def ovirt_connect(OVIRT_URL):
 
 
 # Функция поиска и выбора нескольких ВМ на основе префикса, введенного пользователем - vm_match
-def select_vm(connection, vm_match):
+def SelectVM(connection, vm_match):
 
     system_service = connection.system_service()
     vms_service = system_service.vms_service()
@@ -110,7 +110,7 @@ def select_vm(connection, vm_match):
                 vm_num = 0
 
 # Функция поиска и выбора одиночной ВМ на основе префикса, введенного пользователем - vm_match
-def select_single_vm(connection, vm_match):
+def SelectSingleVM(connection, vm_match):
 
     system_service = connection.system_service()
     vms_service = system_service.vms_service()
@@ -294,7 +294,8 @@ def CheckVMdisk(connection,VM_NAME):
                     #disk_number = m.group(1)
                     #print(disk_number)
                     #return disk_number
-                
+
+# Функция выбора диска по имени ВМ               
 def DiskSelectByVM(connection,VM_NAME):
     vms_service = connection.system_service().vms_service()
     vms = vms_service.list()
@@ -315,7 +316,8 @@ def DiskSelectByVM(connection,VM_NAME):
                 disk_num += 1
                 disk_arr.append(disk.id)
                 disk_arr_name.append(disk.name)
-                print(f"{disk_num}: {disk.name}")
+                disk_size = disk.provisioned_size /1024 /1024 /1024
+                print(f"{disk_num}: {disk.name}, размер диска: {disk_size} ГБ, формат: {disk.format}")
             disk_indexes = input(f"Введите номера дисков (через пробел) или '*' для выбора всех дисков > ")
             if disk_indexes == '*':
                 print(f"Выбраны диски:")
@@ -334,7 +336,7 @@ def DiskSelectByVM(connection,VM_NAME):
                     print(f"{disk_num_selected}: {disk_name}")
                 return DISK_ID_ARR
             
-
+# Функия выбора имени диска по их именам
 def DiskSelectByDisk(connection,disk_match):
     vms_service = connection.system_service().vms_service()
     vms = vms_service.list()
@@ -355,12 +357,15 @@ def DiskSelectByDisk(connection,disk_match):
                     disk_num += 1
                     disk_dict[disk.id] = vm.name
                     disk_dict_name[disk.id] = disk.name
-                    print(f"{disk_num}: Имя ВМ: {vm.name}, диск: {disk.name}")
+                    disk_size = disk.provisioned_size /1024 /1024 /1024
+                    print(f"{disk_num}: Имя ВМ: {vm.name}, диск: {disk.name}, размер: {disk_size} ГБ, формат: {disk.format}")
                 elif re.search(disk_match.lower(), disk.name.lower()):
                     disk_num += 1
                     disk_dict[disk.id] = vm.name
                     disk_dict_name[disk.id] = disk.name
-                    print(f"{disk_num}: Имя ВМ: {vm.name}, диск: {disk.name}")
+                    disk_dict_name[disk.id] = disk.name
+                    disk_size = disk.provisioned_size /1024 /1024 /1024
+                    print(f"{disk_num}: Имя ВМ: {vm.name}, диск: {disk.name}, размер: {disk_size} ГБ, формат: {disk.format}")
         if len(disk_dict) == 0:
             return disk_dict
         disk_indexes = input(f"Введите номера дисков (через пробел) или '*' для выбора всех дисков > ")
@@ -402,20 +407,20 @@ def DiskSelectByDisk(connection,disk_match):
                 print(f"Введен неправильный номер диска3, повторите снова")
                 disk_num = 0
 
-                
+# Функция удаления диска             
 def DeleteDisk(connection, DISK_ID, VM_NAME):
     vms_service = connection.system_service().vms_service()
     vms = vms_service.list()
     for vm in vms:
         vm_name = vm.name
         if vm_name == VM_NAME:
-            # Get disks service and find the disk we want:
+            # Получаем ссылку на объект disks service и находим нужные диски:
             disks_service = connection.system_service().disks_service()
             disks = disks_service.list()
 
             for disk in disks:
                 if disk.id == DISK_ID:
-                    # Find the disk attachment for the disk we are interested on:
+                    # Находим объект disk attachment для интересующего диска:
                     vm_service = vms_service.vm_service(vm.id)
                     disk_attachments_service = vm_service.disk_attachments_service()
                     disk_attachments = disk_attachments_service.list()
@@ -423,17 +428,16 @@ def DeleteDisk(connection, DISK_ID, VM_NAME):
                     disk_attachment = next(
                         (a for a in disk_attachments if a.disk.id == DISK_ID), None
                     )
-                    # Deactivate the disk we found
-                    # or print an error if there is no such disk attached:
+                    # Деактивируем найденный диск
+                    # Или выводим сообщение если диск не подключен
                     if disk_attachment is not None:
-                        # Locate the service that manages the disk attachment that we found
-                        # in the previous step:
+                        # Получам ссылку на службу, управляющую найденным объектом disk attachment 
                         disk_attachment_service = disk_attachments_service.attachment_service(disk_attachment.id)
 
-                        # Deactivate the disk attachment
+                        # Декативируем подключение диска disk attachment
                         disk_attachment_service.update(types.DiskAttachment(active=False))
 
-                        # Wait till the disk attachment not active:
+                        # Ждем завершения операция отключения (деактивации подключения):
                         while True:
                             time.sleep(3)
                             disk_attachment = disk_attachment_service.get()
@@ -469,7 +473,7 @@ def main():
             while True:
                 vm_match = input(f"Введите часть названия ВМ (или '*' для вывода всех ВМ) > ")
                 #print(type(vm_match))
-                VM_NAME_ARR = select_vm(connection, vm_match)
+                VM_NAME_ARR = SelectVM(connection, vm_match)
                 if len(VM_NAME_ARR) == 0:
                     print(f"Не найдено ВМ, соответствующих указанным критериям. Попробуйте еще раз")
                 else:        
@@ -532,7 +536,7 @@ def main():
                     while True:
                         vm_match = input(f"Введите часть названия ВМ (или '*' для вывода всех ВМ) > ")
                         #print(type(vm_match))
-                        VM_NAME = select_single_vm(connection, vm_match)
+                        VM_NAME = SelectSingleVM(connection, vm_match)
                         if not VM_NAME:
                             print(f"Не найдено ВМ, соответствующих указанным критериям. Попробуйте еще раз")
                         else:
