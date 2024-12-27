@@ -28,8 +28,8 @@ OVIRT_PASS = ""
 OVIRT_URL = "https://engine.redvirt.tst/ovirt-engine/api"
 
 #Выключаем варнинги при проверке url без серта
-from requests.packages.urllib3.exceptions import InsecureRequestWarning
-requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+#from requests.packages.urllib3.exceptions import InsecureRequestWarning
+#requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 
 # Функция соединения с Ovirt
@@ -173,7 +173,7 @@ def SelectDomain(connection):
             sd_type = str(sd_type)
             if sd_type  == "data":
                 sd_num += 1
-                sd_arr.append(sd.name)
+                sd_arr.append(sd.id)
                 size_avail = round(sd.available / 1024 /1024 /1024)
                 size_full = round((sd.committed + sd.available)  / 1024 /1024 /1024)
                 print(f"{sd_num}: {sd.name}, полный объем домена {size_full} ГБ, доступный объем {size_avail} ГБ")
@@ -184,9 +184,9 @@ def SelectDomain(connection):
             print(f"Введен неправильный номер домена, повторите снова")
             sd_num = 0
         try:
-            SD_NAME = sd_arr[sd_index]
-            print(SD_NAME)
-            return SD_NAME
+            SD_ID = sd_arr[sd_index]
+            #print(SD_ID)
+            return SD_ID
             break
         except IndexError:
             print(f"Введен неправильный номер домена, повторите снова")
@@ -196,7 +196,7 @@ def SelectDomain(connection):
             sd_num = 0
 
 #Функция добавления диска к ВМ
-def AddDisk(connection, VM_NAME, DISK_NAME, DISK_SIZE, DISK_DESCRIPTION, SD_NAME, DISK_TYPE):
+def AddDisk(connection, VM_NAME, DISK_NAME, DISK_SIZE, DISK_DESCRIPTION, SD_ID, DISK_TYPE):
     vms_service = connection.system_service().vms_service()
     vms = vms_service.list()
     #today = datetime.today().date()
@@ -213,7 +213,7 @@ def AddDisk(connection, VM_NAME, DISK_NAME, DISK_SIZE, DISK_DESCRIPTION, SD_NAME
                         wipe_after_delete=True,
                         storage_domains=[
                             types.StorageDomain(
-                                name=SD_NAME,
+                                id=SD_ID,
                             ),
                         ],
                     ),
@@ -249,7 +249,7 @@ def AddDisk(connection, VM_NAME, DISK_NAME, DISK_SIZE, DISK_DESCRIPTION, SD_NAME
                         wipe_after_delete=True,
                         storage_domains=[
                             types.StorageDomain(
-                                name=SD_NAME,
+                                id=SD_ID,
                             ),
                         ],
                     ),
@@ -297,6 +297,13 @@ def CheckVMdisk(connection,VM_NAME):
 
 # Функция выбора диска по имени ВМ               
 def DiskSelectByVM(connection,VM_NAME):
+    sds_service = connection.system_service().storage_domains_service()
+    sds = sds_service.list()
+
+    sd_dict = {}
+    for sd in sds:
+        sd_dict[sd.name] = sd.id
+    
     vms_service = connection.system_service().vms_service()
     vms = vms_service.list()
     disk_arr = []
@@ -313,11 +320,20 @@ def DiskSelectByVM(connection,VM_NAME):
             disk_attachments = disk_attachments_service.list()
             for disk_attachment in disk_attachments:
                 disk = connection.follow_link(disk_attachment.disk)
+                disks_service = connection.system_service().disks_service()
+                disk_service = disks_service.disk_service(disk_attachment.disk.id)
+                disksd = disk_service.get()
+                sd_id = disksd.storage_domains[0].id
+                for k, v in sd_dict.items():
+                    if v == sd_id:
+                        sd_name = k
+                #sdomain = disksd.storage_domains=[types.StorageDomain(id)]
+                #print(sd_id)
                 disk_num += 1
                 disk_arr.append(disk.id)
                 disk_arr_name.append(disk.name)
                 disk_size = disk.provisioned_size /1024 /1024 /1024
-                print(f"{disk_num}: {disk.name}, размер диска: {disk_size} ГБ, формат: {disk.format}")
+                print(f"{disk_num}: {disk.name}, Размер диска: {disk_size} ГБ, Формат: {disk.format}, Домен: {sd_name}")
             disk_indexes = input(f"Введите номера дисков (через пробел) или '*' для выбора всех дисков > ")
             if disk_indexes == '*':
                 print(f"Выбраны диски:")
@@ -338,6 +354,14 @@ def DiskSelectByVM(connection,VM_NAME):
             
 # Функия выбора имени диска по их именам
 def DiskSelectByDisk(connection,disk_match):
+
+    sds_service = connection.system_service().storage_domains_service()
+    sds = sds_service.list()
+
+    sd_dict = {}
+    for sd in sds:
+        sd_dict[sd.name] = sd.id
+
     vms_service = connection.system_service().vms_service()
     vms = vms_service.list()
     disk_dict = {}
@@ -353,19 +377,34 @@ def DiskSelectByDisk(connection,disk_match):
             disk_attachments = disk_attachments_service.list()
             for disk_attachment in disk_attachments: 
                 disk = connection.follow_link(disk_attachment.disk)
+                
                 if disk_match == '*':
+                    disks_service = connection.system_service().disks_service()
+                    disk_service = disks_service.disk_service(disk_attachment.disk.id)
+                    disksd = disk_service.get()
+                    sd_id = disksd.storage_domains[0].id
+                    for k, v in sd_dict.items():
+                        if v == sd_id:
+                            sd_name = k
                     disk_num += 1
                     disk_dict[disk.id] = vm.name
                     disk_dict_name[disk.id] = disk.name
                     disk_size = disk.provisioned_size /1024 /1024 /1024
-                    print(f"{disk_num}: Имя ВМ: {vm.name}, диск: {disk.name}, размер: {disk_size} ГБ, формат: {disk.format}")
+                    print(f"{disk_num}: Имя ВМ: {vm.name}, Диск: {disk.name}, Размер: {disk_size} ГБ, Формат: {disk.format}, Домен {sd_name}")
                 elif re.search(disk_match.lower(), disk.name.lower()):
+                    disks_service = connection.system_service().disks_service()
+                    disk_service = disks_service.disk_service(disk_attachment.disk.id)
+                    disksd = disk_service.get()
+                    sd_id = disksd.storage_domains[0].id
+                    for k, v in sd_dict.items():
+                        if v == sd_id:
+                            sd_name = k
                     disk_num += 1
                     disk_dict[disk.id] = vm.name
                     disk_dict_name[disk.id] = disk.name
                     disk_dict_name[disk.id] = disk.name
                     disk_size = disk.provisioned_size /1024 /1024 /1024
-                    print(f"{disk_num}: Имя ВМ: {vm.name}, диск: {disk.name}, размер: {disk_size} ГБ, формат: {disk.format}")
+                    print(f"{disk_num}: Имя ВМ: {vm.name}, Диск: {disk.name}, Размер: {disk_size} ГБ, Формат: {disk.format}, Домен {sd_name}")
         if len(disk_dict) == 0:
             return disk_dict
         disk_indexes = input(f"Введите номера дисков (через пробел) или '*' для выбора всех дисков > ")
@@ -460,6 +499,38 @@ def DeleteDisk(connection, DISK_ID, VM_NAME):
                 sd_disks_service.disk_service(disk.id).remove()
                 print(f"Удален диск: {disk.name}")
     
+# Функция перемещения диска             
+def MoveDisk(connection, DISK_ID, SD_ID):
+
+    sds_service = connection.system_service().storage_domains_service()
+    sds = sds_service.list()
+
+    sd_dict = {}
+    for sd in sds:
+        sd_dict[sd.name] = sd.id
+    for k, v in sd_dict.items():
+        if v == SD_ID:
+            SD_NAME = k
+
+    print(f"Для перемещения выбран домен: {SD_NAME}")
+    disks_service = connection.system_service().disks_service()
+    disks = disks_service.list()
+    for disk in disks:
+        if disk.id == DISK_ID:
+            disk_service = disks_service.disk_service(disk.id)
+            sd = disk_service.get()
+            sd_id = sd.storage_domains[0].id
+            #print(sd_id)
+            if sd_id == SD_ID:
+                print(f"Диск {disk.name} уже находится в домене {SD_NAME}")
+                break
+            else:
+                try:
+                    disk_service.move(storage_domain=types.StorageDomain(id=SD_ID))
+                    print(f"Диск {disk.name} перемещается в домен {SD_NAME}")
+                except sdk.Error:
+                    print(f"Диск {disk.name} невозможно перенести в домен {SD_NAME}")
+
 
 def main():
 
@@ -468,7 +539,7 @@ def main():
     while True:
         VM_ACTION = input(f"Введите требуемое действие для дисков ВМ ('a'- добавление, 'd' - удаление, 'm' - перемещение, или любую клавишу для выхода) > ")
         if VM_ACTION == 'a':
-            SD_NAME = SelectDomain(connection)
+            SD_ID = SelectDomain(connection)
             #today = datetime.today().date()
             while True:
                 vm_match = input(f"Введите часть названия ВМ (или '*' для вывода всех ВМ) > ")
@@ -523,7 +594,7 @@ def main():
                             DISK_NAME = VM_NAME + '_' + str(DISK_CURRENT_NUM)
                             DISK_DESCRIPTION = VM_NAME+ '_' + str(DISK_CURRENT_NUM)
                             #print(DISK_NAME)+
-                            AddDisk(connection, VM_NAME, DISK_NAME, DISK_SIZE, DISK_DESCRIPTION, SD_NAME, DISK_TYPE)
+                            AddDisk(connection, VM_NAME, DISK_NAME, DISK_SIZE, DISK_DESCRIPTION, SD_ID, DISK_TYPE)
                             DISK_CURRENT_NUM += 1
                             i += 1
                         
@@ -540,6 +611,7 @@ def main():
                         if not VM_NAME:
                             print(f"Не найдено ВМ, соответствующих указанным критериям. Попробуйте еще раз")
                         else:
+                            #DomainArr
                             DiskArr= DiskSelectByVM(connection, VM_NAME)
                             for disk in DiskArr:
                                 DeleteDisk(connection, disk, VM_NAME)
@@ -559,6 +631,42 @@ def main():
                                 DeleteDisk(connection, disk_id, vm_name)
                             break
                     break
+
+        elif VM_ACTION == 'm':
+            while True:
+                MOVE_MODE = input(f"Введите режим выбора дисков: v - по имени ВМ, d - по имени дисков > ")
+                if MOVE_MODE == 'v':
+                    while True:
+                        vm_match = input(f"Введите часть названия ВМ (или '*' для вывода всех ВМ) > ")
+                        #print(type(vm_match))
+                        VM_NAME = SelectSingleVM(connection, vm_match)
+                        if not VM_NAME:
+                            print(f"Не найдено ВМ, соответствующих указанным критериям. Попробуйте еще раз")
+                        else:
+                            print(f"Выберете домен хранения для миграции:")
+                            DiskArr= DiskSelectByVM(connection, VM_NAME)
+                            SD_ID = SelectDomain(connection)
+                            for disk in DiskArr:
+                                MoveDisk(connection, disk, SD_ID)
+                            break
+                    break
+
+                elif MOVE_MODE == 'd':
+                    while True:
+                        disk_match = input(f"Введите часть названия диска (или '*' для вывода всех дисков) > ")
+                        #print(type(vm_match))
+                        DiskDict = DiskSelectByDisk(connection, disk_match)
+                        if len(DiskDict) == 0:
+                            print(f"Не найдено дисков, соответствующих указанным критериям. Попробуйте еще раз")
+                        else:
+                            print(f"Выберете домен хранения для миграции:")
+                            SD_ID = SelectDomain(connection)
+                            #print(DiskDict)
+                            for disk_id, vm_name in DiskDict.items():
+                                MoveDisk(connection, disk_id, SD_ID)
+                            break
+                    break
+
         else:
             break
 

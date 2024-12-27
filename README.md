@@ -18,7 +18,7 @@ Logs collection from oVirt Engine VM and hypervisors.
 Массовое создание (из шаблонов)/ удаление виртуальных машин.  
 Bulk creation (from templates) /removal of virtual machines.  
 
-### disc_operations  
+### disk_operations  
 
 Автоматизация операций с дисками виртуальных машин: Создание/ удаление.  
 Virtual machines disk operations automation: creation/ removal.
