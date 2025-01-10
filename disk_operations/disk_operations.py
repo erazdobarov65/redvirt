@@ -16,6 +16,8 @@ import ovirtsdk4.types as types
 #import re, sys, base64, getopt, socket, csv, os,
 import time, requests
 import re
+import itertools
+import sys
 #from colorama import Fore, Back, Style, init
 #from os.path import exists
 from datetime import datetime
@@ -312,7 +314,13 @@ def DiskSelectByVM(connection,VM_NAME):
     disk_num_selected = 0
     DISK_ID_ARR = []
     DISK_NAME_ARR = []
+    spinner = itertools.cycle(['-', '\\', '|', '/'])
     for vm in vms:
+         # Show rotating bar to indicate progress
+        sys.stdout.write(next(spinner))  # Print the next spinner character
+        sys.stdout.flush()
+        sys.stdout.write('\b')  # Erase the character
+        time.sleep(0.1)
         vm_name = vm.name
         if vm_name == VM_NAME:
             #Определяем id вДисков, подключенных к ВМ
@@ -370,8 +378,15 @@ def DiskSelectByDisk(connection,disk_match):
     disk_num_selected = 0
     DISK_ID_DICT = {}
     DISK_NAME_DICT = {}
+
+    spinner = itertools.cycle(['-', '\\', '|', '/'])
     while True:
         for vm in vms:
+            # Show rotating bar to indicate progress
+            sys.stdout.write(next(spinner))  # Print the next spinner character
+            sys.stdout.flush()
+            sys.stdout.write('\b')  # Erase the character
+            time.sleep(0.1)
             #Определяем id вДисков, подключенных к ВМ
             disk_attachments_service = vms_service.vm_service(vm.id).disk_attachments_service()
             disk_attachments = disk_attachments_service.list()
@@ -531,13 +546,38 @@ def MoveDisk(connection, DISK_ID, SD_ID):
                 except sdk.Error:
                     print(f"Диск {disk.name} невозможно перенести в домен {SD_NAME}")
 
+# Функция расширения диска             
+def ExtendDisk(connection, DISK_ID, DISK_SIZE):
+
+
+    #print(f"Для перемещения выбран домен: {SD_NAME}")
+    disks_service = connection.system_service().disks_service()
+    disks = disks_service.list()
+    for disk in disks:
+        if disk.id == DISK_ID:
+            disk_service = disks_service.disk_service(disk.id)
+            disk_exist_size = disk_service.get()
+            disk_exist_size = disk_exist_size.provisioned_size
+            #print(disk_exist_size)
+            new_size = disk_exist_size + DISK_SIZE
+            #print(new_size)
+            new_size_print = new_size / 1024 /1024 /1024
+            #print(new_size_print)
+            
+            try:
+                disk_service.update(disk=types.Disk(provisioned_size=new_size))
+                print(f"Новый размер диска {disk.name}: {new_size_print} ГБ")
+            except sdk.Error:
+                print(f"Диск {disk.name} невозможно расширить")
+            
+        
 
 def main():
 
     connection = ovirt_connect(OVIRT_URL)
     #VM_NAME = SelectVM(connection)
     while True:
-        VM_ACTION = input(f"Введите требуемое действие для дисков ВМ ('a'- добавление, 'd' - удаление, 'm' - перемещение, или любую клавишу для выхода) > ")
+        VM_ACTION = input(f"Введите требуемое действие для дисков ВМ ('a'- добавление, 'd' - удаление, 'm' - перемещение, 'e' - расширение или любую клавишу для выхода) > ")
         if VM_ACTION == 'a':
             SD_ID = SelectDomain(connection)
             #today = datetime.today().date()
@@ -643,8 +683,8 @@ def main():
                         if not VM_NAME:
                             print(f"Не найдено ВМ, соответствующих указанным критериям. Попробуйте еще раз")
                         else:
-                            print(f"Выберете домен хранения для миграции:")
                             DiskArr= DiskSelectByVM(connection, VM_NAME)
+                            print(f"Выберете домен хранения для миграции:")
                             SD_ID = SelectDomain(connection)
                             for disk in DiskArr:
                                 MoveDisk(connection, disk, SD_ID)
@@ -664,6 +704,54 @@ def main():
                             #print(DiskDict)
                             for disk_id, vm_name in DiskDict.items():
                                 MoveDisk(connection, disk_id, SD_ID)
+                            break
+                    break
+
+        elif VM_ACTION == 'e':
+            while True:
+                MOVE_MODE = input(f"Введите режим выбора дисков: v - по имени ВМ, d - по имени дисков > ")
+                if MOVE_MODE == 'v':
+                    while True:
+                        vm_match = input(f"Введите часть названия ВМ (или '*' для вывода всех ВМ) > ")
+                        #print(type(vm_match))
+                        VM_NAME = SelectSingleVM(connection, vm_match)
+                        if not VM_NAME:
+                            print(f"Не найдено ВМ, соответствующих указанным критериям. Попробуйте еще раз")
+                        else:
+                            DiskArr= DiskSelectByVM(connection, VM_NAME)
+                            while True:
+                                DISK_SIZE = input(f"Введите требуемый размер на который нужно расширить диск (ГБ) > ")
+                                try:
+                                    DISK_SIZE = int(DISK_SIZE) * 2**30
+                                except ValueError:
+                                    print(f"Введите требуемый размер еще раз")
+                                else:
+                                    break
+
+                            for disk in DiskArr:
+                                ExtendDisk(connection, disk, DISK_SIZE)
+                            break
+                    break
+
+                elif MOVE_MODE == 'd':
+                    while True:
+                        disk_match = input(f"Введите часть названия диска (или '*' для вывода всех дисков) > ")
+                        #print(type(vm_match))
+                        DiskDict = DiskSelectByDisk(connection, disk_match)
+                        if len(DiskDict) == 0:
+                            print(f"Не найдено дисков, соответствующих указанным критериям. Попробуйте еще раз")
+                        else:
+                            while True:
+                                DISK_SIZE = input(f"Введите требуемый размер на который нужно расширить диск (ГБ) > ")
+                                try:
+                                    DISK_SIZE = int(DISK_SIZE) * 2**30
+                                except ValueError:
+                                    print(f"Введите требуемый размер еще раз")
+                                else:
+                                    break
+
+                            for disk_id, vm_name in DiskDict.items():
+                                ExtendDisk(connection, disk_id, DISK_SIZE)
                             break
                     break
 
