@@ -20,8 +20,8 @@ Bulk creation (from templates) /removal of virtual machines.
 
 ### disk_operations  
 
-Автоматизация операций с дисками виртуальных машин: Создание/ удаление.  
-Virtual machines disk operations automation: creation/ removal.
+Автоматизация операций с дисками виртуальных машин: Создание/ удаление/ перемещение/ расширение.  
+Virtual machines disk operations automation: creation/ removal/ motion/ extension.
 
 ### find_snap  
 
