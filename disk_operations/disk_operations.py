@@ -489,7 +489,11 @@ def DeleteDisk(connection, DISK_ID, VM_NAME):
                         disk_attachment_service = disk_attachments_service.attachment_service(disk_attachment.id)
 
                         # Декативируем подключение диска disk attachment
-                        disk_attachment_service.update(types.DiskAttachment(active=False))
+                        try:
+                            disk_attachment_service.update(types.DiskAttachment(active=False))
+                        except sdk.Error:
+                            print(f"Диск {disk.name} невозможно деактивировать")
+                            break
 
                         # Ждем завершения операция отключения (деактивации подключения):
                         while True:
@@ -511,9 +515,13 @@ def DeleteDisk(connection, DISK_ID, VM_NAME):
         #print(sds_disks_service)
         for disk in sds_disks_service:
             if disk.id == DISK_ID:
-                sd_disks_service.disk_service(disk.id).remove()
-                print(f"Удален диск: {disk.name}")
-    
+                try:
+                    sd_disks_service.disk_service(disk.id).remove()
+                    print(f"Удален диск: {disk.name}")
+                except sdk.Error:
+                    print(f"Диск {disk.name} невозможно удалить")
+                    break
+                
 # Функция перемещения диска             
 def MoveDisk(connection, DISK_ID, SD_ID):
 
